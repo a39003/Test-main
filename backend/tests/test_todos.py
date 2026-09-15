@@ -244,3 +244,63 @@ async def test_create_todo_invalidates_cached_list(
 
     assert response.status_code == 201
     assert fake_redis.deleted_keys
+
+
+@pytest.mark.asyncio
+async def test_update_todo_invalidates_cached_list(
+    client: AsyncClient,
+    fake_redis,
+):
+    """Updating a todo must invalidate any cached list for that user."""
+    token = await get_auth_token(client, "cache-update@example.com")
+    headers = {"Authorization": f"Bearer {token}"}
+    create_res = await client.post(
+        "/api/v1/todos",
+        json={"title": "Original Todo"},
+        headers=headers,
+    )
+    todo_id = create_res.json()["id"]
+
+    # Cache the list
+    await client.get("/api/v1/todos", headers=headers)
+    fake_redis.deleted_keys.clear()
+
+    # Update todo
+    response = await client.put(
+        f"/api/v1/todos/{todo_id}",
+        json={"title": "Updated Title"},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert fake_redis.deleted_keys
+
+
+@pytest.mark.asyncio
+async def test_delete_todo_invalidates_cached_list(
+    client: AsyncClient,
+    fake_redis,
+):
+    """Deleting a todo must invalidate any cached list for that user."""
+    token = await get_auth_token(client, "cache-delete@example.com")
+    headers = {"Authorization": f"Bearer {token}"}
+    create_res = await client.post(
+        "/api/v1/todos",
+        json={"title": "Todo to delete"},
+        headers=headers,
+    )
+    todo_id = create_res.json()["id"]
+
+    # Cache the list
+    await client.get("/api/v1/todos", headers=headers)
+    fake_redis.deleted_keys.clear()
+
+    # Delete todo
+    response = await client.delete(
+        f"/api/v1/todos/{todo_id}",
+        headers=headers,
+    )
+
+    assert response.status_code == 204
+    assert fake_redis.deleted_keys
+

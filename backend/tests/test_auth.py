@@ -125,3 +125,22 @@ async def test_refresh_token_cannot_authenticate_protected_endpoint(
     )
 
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_tampered_access_token_is_rejected(client: AsyncClient):
+    """A tampered access token signature must be rejected with 401."""
+    reg_response = await client.post(
+        "/api/v1/auth/register",
+        json={"email": "tampered@example.com", "password": "password123"},
+    )
+    valid_token = reg_response.json()["access_token"]
+    tampered_token = valid_token[:-5] + "XXXXX"
+
+    response = await client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {tampered_token}"},
+    )
+
+    assert response.status_code == 401
+

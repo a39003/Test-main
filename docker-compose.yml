@@ -21,6 +21,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend:/app
     environment:
       DATABASE_URL: postgresql+asyncpg://fabbi:fabbi_secret@postgres:5432/postgres
       REDIS_URL: redis://redis:6379/0

@@ -27,6 +27,7 @@ export function useLogin() {
     onSuccess: (data) => {
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("refresh_token", data.refresh_token);
+      queryClient.clear();
     },
   });
 }
@@ -40,6 +41,7 @@ export function useRegister() {
     onSuccess: (data) => {
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("refresh_token", data.refresh_token);
+      queryClient.clear();
     },
   });
 }

@@ -74,13 +74,13 @@ export function useUpdateTodo() {
       return response.data;
     },
     onMutate: async ({ id, data }) => {
-      // Cancel outgoing queries
+      // Hủy các query đang fetch dở để tránh ghi đè
       await queryClient.cancelQueries({ queryKey: ["todos"] });
 
-      // Snapshot previous value
+      // Lưu lại dữ liệu trước đó để rollback nếu API lỗi
       const previousTodos = queryClient.getQueryData<TodoListResponse>(["todos"]);
 
-      // Optimistically update
+      // Cập nhật tạm thời trên UI (optimistic update)
       if (previousTodos) {
         queryClient.setQueryData<TodoListResponse>(["todos"], {
           ...previousTodos,
@@ -92,10 +92,15 @@ export function useUpdateTodo() {
 
       return { previousTodos };
     },
-    onError: () => {
+    onError: (_error, _variables, context) => {
+      // Rollback lại state cũ nếu request thất bại
+      if (context?.previousTodos) {
+        queryClient.setQueryData(["todos"], context.previousTodos);
+      }
       toast.error("Failed to update todo");
     },
     onSettled: () => {
+      // Luôn làm mới lại cache để đồng bộ với server
       queryClient.invalidateQueries({ queryKey: ["todos"] });
     },
   });

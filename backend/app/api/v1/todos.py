@@ -23,6 +23,12 @@ router = APIRouter()
 CACHE_TTL = 300  # 5 minutes
 
 
+async def invalidate_user_todos_cache(redis: RedisClient, user_id: uuid.UUID):
+    """Xóa cache danh sách todo của user khi có thay đổi dữ liệu."""
+    if redis:
+        await redis.delete(f"todos:list:{user_id}")
+
+
 @router.get("", response_model=TodoListResponse)
 async def list_todos(
     page: int = Query(1, ge=1),
@@ -34,7 +40,8 @@ async def list_todos(
     """Get paginated list of todos."""
     skip = (page - 1) * size
 
-    cache_key = "todos:list"
+    # Sửa lỗi cache dùng chung: lưu cache riêng biệt theo từng user_id
+    cache_key = f"todos:list:{current_user.id}"
 
     # Try to get from cache
     cached = await redis.get(cache_key)
@@ -79,9 +86,11 @@ async def create_new_todo(
     todo_data: TodoCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    redis: RedisClient = Depends(get_redis),
 ):
     """Create a new todo item."""
     todo = await create_todo(db, todo_data, current_user.id)
+    await invalidate_user_todos_cache(redis, current_user.id)
     return todo
 
 
@@ -93,7 +102,8 @@ async def get_todo(
 ):
     """Get a specific todo by ID."""
     todo = await get_todo_by_id(db, todo_id)
-    if not todo:
+    # Kiểm tra quyền sở hữu: chỉ xem được todo của chính mình
+    if not todo or todo.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Todo not found",
@@ -112,24 +122,18 @@ async def update_existing_todo(
 ):
     """Update a todo item."""
     todo = await get_todo_by_id(db, todo_id)
-    if not todo:
+    # Kiểm tra quyền sở hữu: không cho phép sửa todo của người khác
+    if not todo or todo.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Todo not found",
         )
 
-    update_data = todo_data.model_dump()
-
-    if todo_data.completed:
-        todo.completed = todo_data.completed
-
-    # Apply other updates
-    if update_data.get("title") is not None:
-        todo.title = update_data["title"]
-    if "description" in update_data:
-        todo.description = update_data["description"]
-
-    updated_todo = await update_todo(db, todo, {})
+    # Dùng exclude_unset=True để chỉ cập nhật các field được truyền lên
+    # (tránh lỗi toggle completed: False bị bỏ qua hoặc làm mất description cũ)
+    update_data = todo_data.model_dump(exclude_unset=True)
+    updated_todo = await update_todo(db, todo, update_data)
+    await invalidate_user_todos_cache(redis, current_user.id)
 
     return updated_todo
 
@@ -143,12 +147,15 @@ async def delete_existing_todo(
 ):
     """Delete a todo item."""
     todo = await get_todo_by_id(db, todo_id)
-    if not todo:
+    # Kiểm tra quyền sở hữu: không cho phép xoá todo của người khác
+    if not todo or todo.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Todo not found",
         )
 
     await delete_todo(db, todo)
+    await invalidate_user_todos_cache(redis, current_user.id)
 
     return None
+

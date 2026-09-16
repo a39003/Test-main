@@ -25,11 +25,8 @@ test_session_maker = async_sessionmaker(
 )
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+# Session-scoped event loop is automatically managed by pytest-asyncio
+# as configured in pytest.ini (asyncio_default_fixture_loop_scope = session)
 
 
 @pytest.fixture(autouse=True)

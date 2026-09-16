@@ -1,3 +1,4 @@
+# Stage 1: Build the React application
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
@@ -5,9 +6,9 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-FROM node:20-alpine
-WORKDIR /app
-RUN npm install -g serve
-COPY --from=build /app/dist ./dist
+# Stage 2: Serve the static files with lightweight Nginx
+FROM nginx:alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 3000
-CMD ["serve", "-s", "dist", "-l", "3000"]
+CMD ["nginx", "-g", "daemon off;"]

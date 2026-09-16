@@ -24,7 +24,7 @@
 
 | TC ID | Module / Feature | Test Scenario | Preconditions | Test Steps | Expected Result | Priority / Severity | Status |
 |---|---|---|---|---|---|---|---|
-| **TC-01** | Auth | Đăng ký tài khoản thành công | Chưa có tài khoản | 1. Đột nhập trang `/register`<br>2. Nhập email mới và password khớp với confirm password<br>3. Bấm "Create Account" | Tạo tài khoản thành công, trả về access/refresh token và chuyển hướng tới `/` | High / Blocker | Pass |
+| **TC-01** | Auth | Đăng ký tài khoản thành công | Chưa có tài khoản | 1. Truy cập trang `/register`<br>2. Nhập email mới và password khớp với confirm password<br>3. Bấm "Create Account" | Tạo tài khoản thành công, trả về access/refresh token và chuyển hướng tới `/` | High / Blocker | Pass |
 | **TC-02** | Auth | Đăng nhập thành công với thông tin hợp lệ | Tài khoản đã tồn tại | 1. Mở trang `/login`<br>2. Nhập email/password đúng<br>3. Bấm "Sign In" | Đăng nhập thành công, lưu token vào client và chuyển hướng tới Todo Dashboard | High / Blocker | Pass |
 | **TC-03** | Auth | Đăng nhập thất bại với mật khẩu sai (Chống User Enumeration) | Tài khoản đã tồn tại | 1. Mở trang `/login`<br>2. Nhập email đúng, password sai<br>3. Bấm "Sign In" | Trả về 401 Unauthorized với thông báo lỗi chung, không làm lộ sự tồn tại của email | Medium / Security | Pass |
 | **TC-04** | Auth - JWT Security | Từ chối Access Token đã hết hạn | Token đã hết thời gian khả dụng (`exp` trôi qua) | 1. Gửi request đến GET `/api/v1/auth/me` với Bearer token đã hết hạn | Server từ chối request với mã lỗi HTTP 401 Unauthorized | Critical / Security | Pass |
